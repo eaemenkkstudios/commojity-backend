@@ -2,9 +2,9 @@ package ai
 
 import (
 	"errors"
+	"math"
+	"math/rand"
 	"unsafe"
-
-	"github.com/eaemenkkstudios/commojity-backend/data"
 )
 
 // Gene struct
@@ -15,7 +15,7 @@ type Gene struct {
 	Transport   uint16
 }
 
-// Gene Stats struct
+// Gene stats struct
 type GeneStats struct {
 	Inputs      float64 `json:"inputs"`
 	Maintenance float64 `json:"maintenance"`
@@ -23,13 +23,21 @@ type GeneStats struct {
 	Transport   float64 `json:"transport"`
 }
 
+// Months range
+const MONTHS = 12
+
+// Floats for every month in a year
+type Calendar [MONTHS]float64
+
+type GeneBuffer [unsafe.Sizeof(Gene{})]byte
+
 // Decode gene data into gene
-func (g *Gene) Decode(data data.GeneData) error {
+func (g *Gene) Decode(data []byte) error {
 	if data == nil {
 		return errors.New("cannot decode nil data into gene")
 	}
 	// Allocate enough bytes to fill model
-	plate := [unsafe.Sizeof(Gene{})]byte{}
+	plate := GeneBuffer{}
 	// Get smallest value
 	min := len(plate)
 	if len(data) < min {
@@ -47,7 +55,7 @@ func (g *Gene) Decode(data data.GeneData) error {
 }
 
 // Decode gene data into gene
-func (g *Gene) Encode() (data *data.GeneData) {
+func (g *Gene) Encode() (data *[]byte) {
 	// Allocate slice of bytes as result
 	result := []byte{}
 	// Insert gene values in order
@@ -61,13 +69,58 @@ func (g *Gene) Encode() (data *data.GeneData) {
 }
 
 // Get gene stats as percentage
-func (g *Gene) Stats() (result GeneStats) {
+func Stats(gene Gene) (result GeneStats) {
 	// Total value
-	total := uint64(g.Inputs) + uint64(g.Maintenance) + uint64(g.Transport) + uint64(g.Contracts)
+	total := uint64(gene.Inputs) + uint64(gene.Maintenance) + uint64(gene.Transport) + uint64(gene.Contracts)
 	// Calculate percentage
-	result.Inputs = float64(g.Inputs) / float64(total) * 100
-	result.Maintenance = float64(g.Maintenance) / float64(total) * 100
-	result.Contracts = float64(g.Contracts) / float64(total) * 100
-	result.Transport = float64(g.Transport) / float64(total) * 100
+	result.Inputs = float64(gene.Inputs) / float64(total)
+	result.Maintenance = float64(gene.Maintenance) / float64(total)
+	result.Contracts = float64(gene.Contracts) / float64(total)
+	result.Transport = float64(gene.Transport) / float64(total)
 	return
+}
+
+// Fitness function
+func (g *GeneStats) Fitness(s *Scenario) float64 {
+	// Total profit (starts with 100% loss)
+	yield := -s.Budget
+	// Budget monthly spent with Inputs
+	budgetInputs := s.Budget * g.Inputs / MONTHS
+	// Budget monthly spent with Maintenance
+	budgetMaintenance := s.Budget * g.Maintenance / MONTHS
+	// Budget monthly spent with Contracts
+	budgetContracts := s.Budget * g.Contracts / MONTHS
+	// Budget monthly spent with Transport
+	budgetTransport := s.Budget * g.Transport / MONTHS
+	// Perform calculations
+	for m := 0; m < MONTHS; m++ {
+		// Grains farmed this month
+		grainProduction := s.Grains[m]
+		// Potential farm outcome
+		potentialFarmOutcome := grainProduction * math.Pow(budgetInputs, 2) / 2
+		// Maintenance rate
+		maintenanceRate := math.Min(budgetMaintenance/s.Maintenance[m], 1)
+		// Actual farm outcome
+		farmOutcome := maintenanceRate * potentialFarmOutcome
+		// Random farm incident
+		if maintenanceRate < .75 && rand.Float32() < float32(s.Harvest[m]) {
+			farmOutcome -= grainProduction * .1
+		}
+		// Grain-transporting vehicles count
+		vehicleCount := math.Floor(math.Log(budgetContracts) / s.Contracts[m])
+		// Capacity of grains that a vehicle can transport
+		vehicleCapacity := math.Floor(budgetTransport / s.Transport[m])
+		// Grains that were initially transported
+		totalGrains := math.Min(vehicleCount*vehicleCapacity, farmOutcome)
+		// Random transport incident
+		for t := 0; t < int(vehicleCount); t++ {
+			if rand.Float32() < float32(s.Route[m]) {
+				// Grains loss
+				totalGrains -= vehicleCapacity * .23
+			}
+		}
+		// Sell grains
+		yield += totalGrains
+	}
+	return yield
 }
