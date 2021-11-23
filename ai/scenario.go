@@ -1,6 +1,8 @@
 package ai
 
-import "math/rand"
+import (
+	"math/rand"
+)
 
 // Scenario input struct
 type Scenario struct {
@@ -41,4 +43,53 @@ func (scenario Scenario) Tournament(genes []Gene, k uint) Gene {
 		}
 	}
 	return genes[winner]
+}
+
+// Processing function
+func (s Scenario) Process(population, generations, parents, competitors uint, mutation float64) (Gene, float64) {
+	// Perform parent check
+	if parents > population {
+		panic("parents must be less than or equal to population count")
+	}
+	// Spawn initial population
+	p := SpawnPopulation(population)
+	// Pass generations
+	for i := uint(0); i < generations; i++ {
+		// Log winners (so there are no repeated winners)
+		winners := []Gene{}
+		// Pick parents
+		for j := uint(0); j < parents; j++ {
+		PerformTournament:
+			w := s.Tournament(p, competitors)
+			// Check if winner has won previously
+			for _, k := range winners {
+				if k == w {
+					goto PerformTournament
+				}
+			}
+			// Add to winners
+			winners = append(winners, w)
+		}
+		// Perform crossover
+		p = Crossover(winners...)
+		for j := range p {
+			p[j].Mutate(mutation)
+		}
+	}
+
+	// Final winner checking
+	var best Gene
+	var bestFitness float64
+	for i, g := range p {
+		fitness := Stats(g).Fitness(s)
+		if i == 0 {
+			best = g
+			bestFitness = fitness
+		} else if fitness > bestFitness {
+			best = g
+			bestFitness = fitness
+		}
+	}
+
+	return best, bestFitness
 }

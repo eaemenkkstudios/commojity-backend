@@ -1,7 +1,6 @@
 package ai
 
 import (
-	"fmt"
 	"math/rand"
 )
 
@@ -41,9 +40,6 @@ func permute(k uint64, result *[]Gene, units []Unit) {
 
 // Crossover function
 func Crossover(genes ...Gene) []Gene {
-	if len(genes) < UNIT_COUNT {
-		panic(fmt.Errorf("not enough individuals to crossover (received %d, but must be at least %d)", len(genes), UNIT_COUNT))
-	}
 	parents := []Unit{}
 	for _, g := range genes {
 		parents = append(parents, g[:]...)

@@ -67,16 +67,16 @@ func (g *Gene) Decode(data []byte) error {
 }
 
 // Decode gene data into gene
-func (g *Gene) Encode() (data []byte) {
-	// Allocate slice of bytes as result
-	result := []byte{}
+func (g *Gene) Encode() (data GeneBuffer) {
 	// Insert gene values in order
-	data = append(result,
-		byte(g[0]>>010), byte(g[0]&0xff),
-		byte(g[1]>>010), byte(g[1]&0xff),
-		byte(g[2]>>010), byte(g[2]&0xff),
-		byte(g[3]>>010), byte(g[3]&0xff),
-	)
+	data[0] = byte(g[0] >> 010)
+	data[1] = byte(g[0] & 0xff)
+	data[2] = byte(g[1] >> 010)
+	data[3] = byte(g[1] & 0xff)
+	data[4] = byte(g[2] >> 010)
+	data[5] = byte(g[2] & 0xff)
+	data[6] = byte(g[3] >> 010)
+	data[7] = byte(g[3] & 0xff)
 	return data
 }
 
