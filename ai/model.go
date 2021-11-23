@@ -7,13 +7,17 @@ import (
 	"unsafe"
 )
 
-// Gene struct
-type Gene struct {
-	Inputs      uint16
-	Maintenance uint16
-	Contracts   uint16
-	Transport   uint16
-}
+// Unit count in gene
+const UNIT_COUNT = 4
+
+// Gene unit
+type Unit uint16
+
+// Gene buffer type
+type GeneBuffer [UNIT_COUNT * unsafe.Sizeof(Unit(0))]byte
+
+// Gene type
+type Gene [UNIT_COUNT]Unit
 
 // Gene stats struct
 type GeneStats struct {
@@ -29,7 +33,15 @@ const MONTHS = 12
 // Floats for every month in a year
 type Calendar [MONTHS]float64
 
-type GeneBuffer [unsafe.Sizeof(Gene{})]byte
+// Decode gene data (in units) into gene
+func (g *Gene) DecodeUnits(data []Unit) error {
+	if data == nil {
+		return errors.New("cannot decode nil data into gene")
+	}
+	// Fill buffer with input data and fill gene
+	copy(g[:], data)
+	return nil
+}
 
 // Decode gene data into gene
 func (g *Gene) Decode(data []byte) error {
@@ -37,33 +49,26 @@ func (g *Gene) Decode(data []byte) error {
 		return errors.New("cannot decode nil data into gene")
 	}
 	// Allocate enough bytes to fill model
-	plate := GeneBuffer{}
-	// Get smallest value
-	min := len(plate)
-	if len(data) < min {
-		min = len(data)
-	}
-	// Fill plate with input data and fill gene
-	for i := 0; i < min; i++ {
-		plate[i] = data[i]
-	}
-	g.Inputs = uint16(plate[0])<<010 | uint16(plate[1])
-	g.Maintenance = uint16(plate[2])<<010 | uint16(plate[3])
-	g.Contracts = uint16(plate[4])<<010 | uint16(plate[5])
-	g.Transport = uint16(plate[6])<<010 | uint16(plate[7])
+	buffer := GeneBuffer{}
+	// Fill buffer with input data and fill gene
+	copy(buffer[:], data)
+	g[0] = Unit(buffer[0])<<010 | Unit(buffer[1])
+	g[1] = Unit(buffer[2])<<010 | Unit(buffer[3])
+	g[2] = Unit(buffer[4])<<010 | Unit(buffer[5])
+	g[3] = Unit(buffer[6])<<010 | Unit(buffer[7])
 	return nil
 }
 
 // Decode gene data into gene
-func (g *Gene) Encode() (data *[]byte) {
+func (g *Gene) Encode() (data []byte) {
 	// Allocate slice of bytes as result
 	result := []byte{}
 	// Insert gene values in order
-	*data = append(result,
-		byte(g.Inputs>>010), byte(g.Inputs&0xff),
-		byte(g.Maintenance>>010), byte(g.Maintenance&0xff),
-		byte(g.Contracts>>010), byte(g.Contracts&0xff),
-		byte(g.Transport>>010), byte(g.Transport&0xff),
+	data = append(result,
+		byte(g[0]>>010), byte(g[0]&0xff),
+		byte(g[1]>>010), byte(g[1]&0xff),
+		byte(g[2]>>010), byte(g[2]&0xff),
+		byte(g[3]>>010), byte(g[3]&0xff),
 	)
 	return data
 }
@@ -71,12 +76,12 @@ func (g *Gene) Encode() (data *[]byte) {
 // Get gene stats as percentage
 func Stats(gene Gene) (result GeneStats) {
 	// Total value
-	total := uint64(gene.Inputs) + uint64(gene.Maintenance) + uint64(gene.Transport) + uint64(gene.Contracts)
+	total := uint64(gene[0]) + uint64(gene[1]) + uint64(gene[2]) + uint64(gene[3])
 	// Calculate percentage
-	result.Inputs = float64(gene.Inputs) / float64(total)
-	result.Maintenance = float64(gene.Maintenance) / float64(total)
-	result.Contracts = float64(gene.Contracts) / float64(total)
-	result.Transport = float64(gene.Transport) / float64(total)
+	result.Inputs = float64(gene[0]) / float64(total)
+	result.Maintenance = float64(gene[1]) / float64(total)
+	result.Contracts = float64(gene[2]) / float64(total)
+	result.Transport = float64(gene[3]) / float64(total)
 	return
 }
 
@@ -120,7 +125,7 @@ func (g *GeneStats) Fitness(s *Scenario) float64 {
 			}
 		}
 		// Sell grains
-		yield += totalGrains
+		yield += totalGrains * s.Price[m]
 	}
 	return yield
 }
