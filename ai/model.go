@@ -46,10 +46,9 @@ func (g *Gene) DecodeUnits(data []Unit) error {
 // Decode gene buffer into gene
 func (g *Gene) DecodeBuffer(data GeneBuffer) error {
 	// Fill buffer with input data and fill gene
-	g[0] = Unit(data[0])<<010 | Unit(data[1])
-	g[1] = Unit(data[2])<<010 | Unit(data[3])
-	g[2] = Unit(data[4])<<010 | Unit(data[5])
-	g[3] = Unit(data[6])<<010 | Unit(data[7])
+	for i := range g {
+		g[i] = Unit(data[i*2])<<010 | Unit(data[i*2+1])
+	}
 	return nil
 }
 
@@ -69,14 +68,13 @@ func (g *Gene) Decode(data []byte) error {
 // Decode gene data into gene
 func (g *Gene) Encode() (data GeneBuffer) {
 	// Insert gene values in order
-	data[0] = byte(g[0] >> 010)
-	data[1] = byte(g[0] & 0xff)
-	data[2] = byte(g[1] >> 010)
-	data[3] = byte(g[1] & 0xff)
-	data[4] = byte(g[2] >> 010)
-	data[5] = byte(g[2] & 0xff)
-	data[6] = byte(g[3] >> 010)
-	data[7] = byte(g[3] & 0xff)
+	for i := range data {
+		if i&1 == 0 {
+			data[i] = byte(g[i] >> 010)
+		} else {
+			data[i] = byte(g[i-1] & 0xff)
+		}
+	}
 	return data
 }
 
@@ -95,10 +93,9 @@ func Stats(g Gene) (result GeneStats) {
 // Mutate gene
 func (g *Gene) Mutate(p float64) {
 	chance := math.Min(math.Max(p, 0), 1)
-	(*g)[0] = Unit(float64((*g)[0]) * (rand.Float64()*chance + 1))
-	(*g)[1] = Unit(float64((*g)[1]) * (rand.Float64()*chance + 1))
-	(*g)[2] = Unit(float64((*g)[2]) * (rand.Float64()*chance + 1))
-	(*g)[3] = Unit(float64((*g)[3]) * (rand.Float64()*chance + 1))
+	for i := range g {
+		g[i] = Unit(float64(g[i]) * (rand.Float64()*chance + 1))
+	}
 }
 
 // Fitness function
