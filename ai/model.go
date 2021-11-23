@@ -43,6 +43,16 @@ func (g *Gene) DecodeUnits(data []Unit) error {
 	return nil
 }
 
+// Decode gene buffer into gene
+func (g *Gene) DecodeBuffer(data GeneBuffer) error {
+	// Fill buffer with input data and fill gene
+	g[0] = Unit(data[0])<<010 | Unit(data[1])
+	g[1] = Unit(data[2])<<010 | Unit(data[3])
+	g[2] = Unit(data[4])<<010 | Unit(data[5])
+	g[3] = Unit(data[6])<<010 | Unit(data[7])
+	return nil
+}
+
 // Decode gene data into gene
 func (g *Gene) Decode(data []byte) error {
 	if data == nil {
@@ -52,10 +62,7 @@ func (g *Gene) Decode(data []byte) error {
 	buffer := GeneBuffer{}
 	// Fill buffer with input data and fill gene
 	copy(buffer[:], data)
-	g[0] = Unit(buffer[0])<<010 | Unit(buffer[1])
-	g[1] = Unit(buffer[2])<<010 | Unit(buffer[3])
-	g[2] = Unit(buffer[4])<<010 | Unit(buffer[5])
-	g[3] = Unit(buffer[6])<<010 | Unit(buffer[7])
+	g.DecodeBuffer(buffer)
 	return nil
 }
 
@@ -74,19 +81,28 @@ func (g *Gene) Encode() (data []byte) {
 }
 
 // Get gene stats as percentage
-func Stats(gene Gene) (result GeneStats) {
+func Stats(g Gene) (result GeneStats) {
 	// Total value
-	total := uint64(gene[0]) + uint64(gene[1]) + uint64(gene[2]) + uint64(gene[3])
+	total := uint64(g[0]) + uint64(g[1]) + uint64(g[2]) + uint64(g[3])
 	// Calculate percentage
-	result.Inputs = float64(gene[0]) / float64(total)
-	result.Maintenance = float64(gene[1]) / float64(total)
-	result.Contracts = float64(gene[2]) / float64(total)
-	result.Transport = float64(gene[3]) / float64(total)
+	result.Inputs = float64(g[0]) / float64(total)
+	result.Maintenance = float64(g[1]) / float64(total)
+	result.Contracts = float64(g[2]) / float64(total)
+	result.Transport = float64(g[3]) / float64(total)
 	return
 }
 
+// Mutate gene
+func (g *Gene) Mutate(p float64) {
+	chance := math.Min(math.Max(p, 0), 1)
+	(*g)[0] = Unit(float64((*g)[0]) * (rand.Float64()*chance + 1))
+	(*g)[1] = Unit(float64((*g)[1]) * (rand.Float64()*chance + 1))
+	(*g)[2] = Unit(float64((*g)[2]) * (rand.Float64()*chance + 1))
+	(*g)[3] = Unit(float64((*g)[3]) * (rand.Float64()*chance + 1))
+}
+
 // Fitness function
-func (g *GeneStats) Fitness(s *Scenario) float64 {
+func (g GeneStats) Fitness(s Scenario) float64 {
 	// Total profit (starts with 100% loss)
 	yield := -s.Budget
 	// Budget monthly spent with Inputs
