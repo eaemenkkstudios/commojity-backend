@@ -70,9 +70,9 @@ func (g *Gene) Encode() (data GeneBuffer) {
 	// Insert gene values in order
 	for i := range data {
 		if i&1 == 0 {
-			data[i] = byte(g[i] >> 010)
+			data[i] = byte(g[i/2] >> 010)
 		} else {
-			data[i] = byte(g[i-1] & 0xff)
+			data[i] = byte(g[i/2] & 0xff)
 		}
 	}
 	return data
@@ -125,7 +125,10 @@ func (g GeneStats) Fitness(s Scenario) float64 {
 			farmOutcome -= grainProduction * .1
 		}
 		// Grain-transporting vehicles count
-		vehicleCount := math.Floor(math.Log(budgetContracts) / s.Contracts[m])
+		vehicleCount := 0.0
+		if budgetContracts > 0 {
+			vehicleCount = math.Floor(math.Log(budgetContracts) / s.Contracts[m])
+		}
 		// Capacity of grains that a vehicle can transport
 		vehicleCapacity := math.Floor(budgetTransport / s.Transport[m])
 		// Grains that were initially transported
@@ -140,5 +143,5 @@ func (g GeneStats) Fitness(s Scenario) float64 {
 		// Sell grains
 		yield += totalGrains * s.Price[m]
 	}
-	return yield
+	return math.Max(yield, -s.Budget)
 }
